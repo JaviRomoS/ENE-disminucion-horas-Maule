@@ -4,7 +4,7 @@ author: Javiera Romo Sanchez
 format: html
 editor: visual
 execute:
-  echo: false
+  echo: true
   warning: false
   message: false
 ---
@@ -198,6 +198,24 @@ summary(model7b)
 
 Este modelo indica que:
  1. Tener pareja detiene la reducción en 0.24 horas
+ 
+## 4.8. Modelo 8: Interacción año y maule
+```{r}
+model7a <- lm(habituales ~ maule_dummy * ano25 + 
+              mujer, data = ene_pond)
+
+model7b <- lm(habituales ~ maule_dummy * ano25 + 
+              mujer + con_pareja +
+              tamano +
+              antiguedad +
+              tipo_contrato +
+              rama, data = ene_pond)
+
+summary(model7a)
+summary(model7b)
+```
+
+Este modelo indica que:
  
 # 5. Gráficos
 

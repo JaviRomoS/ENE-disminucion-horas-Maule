@@ -1,8 +1,9 @@
-"0","ene_pond <- as_survey_design(
-  .data = ene,
-  ids = 1,
-  strata = estrato,
-  weights = fact_anual)
-"
-"2","Error en (function (object, ...) : missing values in `weights'
-"
+"0",""
+"0","ene_pond <- as_survey_design("
+"0","  .data = ene,"
+"0","  ids = 1,"
+"0","  strata = estrato,"
+"0","  weights = fact_anual)"
+"0",""
+"0","subset1 <- subset(ene_pond, region == ""Maule"")"
+"0",""
