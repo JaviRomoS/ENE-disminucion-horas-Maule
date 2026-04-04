@@ -1,0 +1,205 @@
+---
+title: "Analisis 01"
+author: Javiera Romo Sanchez
+format: html
+editor: visual
+execute:
+  echo: false
+  warning: false
+  message: false
+---
+
+# 1. Cargar librerías
+```{r}
+rm(list = ls())
+options(scipen = 999)
+options(survey.lonely.psu = "adjust")
+
+library(pacman)
+pacman::p_load(tidyverse, rio,scales, tidyr, sjlabelled, here, sjmisc, srvyr,survey, 
+               janitor, knitr, kableExtra, patchwork, writexl, ggeffects)
+
+```
+
+# 2. Abrir base de datos
+```{r}
+ene <- readRDS("output/ene_long22-25_proc.rds")
+```
+
+# 3. Objeto encuesta y crear subsets
+```{r}
+
+ene_pond <- as_survey_design(
+  .data = ene,
+  ids = 1,
+  strata = estrato,
+  weights = fact_anual)
+
+subset1 <- subset(ene_pond, region == "Maule")
+
+```
+
+# 4. Modelos de regresion
+
+## 4.1. Modelo 1: Sin interacción 
+
+```{r}
+model1a <- lm(habituales ~ mujer + 
+              ano25 + maule_dummy, data = ene_pond)
+
+model1b <- lm(habituales ~ mujer + 
+              ano25 + maule_dummy +
+              antiguedad +
+              con_pareja +
+              tipo_contrato +
+              tamano +
+              rama, data = ene_pond)
+
+summary(model1a)
+summary(model1b)
+```
+
+este modelo nos indica que:
+ 1. Ser mujer esta relacionado con trabajar menos horas de trabajo. Se mantiene al agregar controles
+ 2. Ser del maule está relacionado positivamente con trabajar mas horas
+
+## 4.2. Modelo 2: Interacción género y año
+
+```{r}
+model2a <- lm(habituales ~ mujer * 
+              ano25 + maule_dummy, data = ene_pond)
+
+# Modelo solo con controles relacionados a características personales
+model2b <- lm(habituales ~ mujer * 
+              ano25 + maule_dummy +
+              antiguedad +
+              con_pareja, data = ene_pond)
+
+# Modelo solo con controles relacionados a características del empleo
+model2c <- lm(habituales ~ mujer * 
+              ano25 + maule_dummy +
+              tipo_contrato +
+              tamano +
+              rama, data = ene_pond)
+
+# Modelo con todas las variables
+model2d <- lm(habituales ~ mujer * 
+              ano25 + maule_dummy +
+              antiguedad +
+              con_pareja +
+              tipo_contrato +
+              tamano +
+              rama, data = ene_pond)
+
+summary(model2a)
+summary(model2b)
+summary(model2c)
+summary(model2d)
+```
+
+Este modelo indica:
+ 1. Hay una diferencia en el efecto por año de mujeres y hombres. Mujeres disminuyen más sus horas.
+ 2. Esta disminución tiene que ver con las características del puesto de trabajo que las mujeres ocupan más que por variables mas personales (antiguedad y si tiene o no pareja). “las mujeres están en puestos de trabajo que disminuyen más”
+
+## 4.3. Modelo 3: Interacción año y rama
+```{r}
+model3a <- lm(habituales ~ rama * ano25 + 
+              mujer + maule_dummy, data = ene_pond)
+
+model3b <- lm(habituales ~ rama * ano25 + 
+              mujer + maule_dummy +
+              antiguedad +
+              con_pareja +
+              tipo_contrato +
+              tamano, data = ene_pond)
+
+summary(model3a)
+summary(model3b)
+```
+
+Este modelo nos indica que: 
+ 1. El aumento no es homogéneo, sino que varía segun la rama
+ 2. Comercio disminuyó sus horas en mayor medida que los demás sectores de interés (b = 1.25 horas).
+
+## 4.4. Modelo 4: Interacción año y tipo_contrato
+```{r}
+model4a <- lm(habituales ~ tipo_contrato * ano25 + 
+              mujer + maule_dummy, data = ene_pond)
+
+model4b <- lm(habituales ~ tipo_contrato * ano25 + 
+              mujer + maule_dummy +
+              antiguedad +
+              con_pareja +
+              tamano +
+              rama, data = ene_pond)
+
+summary(model4a)
+summary(model4b)
+```
+
+Este modelo indica que:
+ 1. Honorarios disminuyeron en mayor medida que los a contrata (1.9 horas).
+ 2. Plazo fijo disminuyen 0.9 horas e indefinidos 0.8 horas
+
+## 4.5. Modelo 5: Interacción año y tamaño de empresa
+```{r}
+model5a <- lm(habituales ~ tamano * ano25 + 
+              mujer + maule_dummy, data = ene_pond)
+
+model5b <- lm(habituales ~ tamano * ano25 + 
+              mujer + maule_dummy +
+              antiguedad +
+              con_pareja +
+              tipo_contrato +
+              rama, data = ene_pond)
+
+summary(model5a)
+summary(model5b)
+```
+
+Este modelo indica que:
+ 1. A mayor tamaño de empresa, menos disminuye la jornada laboral
+ 2. Microempresa es la que más disminuyó horas
+ 
+## 4.6. Modelo 6: Interacción año y antiguedad
+```{r}
+model6a <- lm(habituales ~ antiguedad * ano25 + 
+              mujer + maule_dummy, data = ene_pond)
+
+model6b <- lm(habituales ~ antiguedad * ano25 + 
+              mujer + maule_dummy +
+              tamano +
+              con_pareja +
+              tipo_contrato +
+              rama, data = ene_pond)
+
+summary(model6a)
+summary(model6b)
+```
+
+Este modelo indica que:
+ 1. Cada año adicional de antiguedad reduce la caida de horas en 0.015 horas
+ 
+## 4.7. Modelo 7: Interacción año y estado conyugal
+```{r}
+model7a <- lm(habituales ~ con_pareja * ano25 + 
+              mujer + maule_dummy, data = ene_pond)
+
+model7b <- lm(habituales ~ con_pareja * ano25 + 
+              mujer + maule_dummy +
+              tamano +
+              antiguedad +
+              tipo_contrato +
+              rama, data = ene_pond)
+
+summary(model7a)
+summary(model7b)
+```
+
+Este modelo indica que:
+ 1. Tener pareja detiene la reducción en 0.24 horas
+ 
+# 5. Gráficos
+
+
+ 

@@ -1,0 +1,8 @@
+"0","ene_pond <- as_survey_design(
+  .data = ene,
+  ids = 1,
+  strata = estrato,
+  weights = fact_anual)
+"
+"2","Error en (function (object, ...) : missing values in `weights'
+"

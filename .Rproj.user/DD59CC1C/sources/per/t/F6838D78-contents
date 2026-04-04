@@ -1,0 +1,297 @@
+---
+title: "Analisis 02"
+author: Javiera Romo Sanchez
+format: html
+editor: source
+execute:
+  echo: true
+  warning: false
+  message: false
+---
+
+Codigo para estimar indicadores por rama de actividad economica, usando la base de la ENCLA y del OHL
+
+## Cargar librerias
+
+```{r}
+rm(list = ls())
+options(survey.lonely.psu="certainty")
+
+library(pacman)
+pacman::p_load(tidyverse, dplyr, haven, sjmisc, sjPlot, summarytools, survey, readxl, car, writexl, survey, ggplot2)
+```
+
+## Abrir bases de datos
+
+```{r}
+encla <- readRDS("../output/subset1.rds")
+ohl <- readxl::read_excel("../input/base_OHL.xlsx", col_types = "text")
+```
+
+## Objeto encuesta ENCLA
+
+```{r}
+
+# variable pob 
+encla <- encla %>% 
+  group_by(estrato) %>%  
+  mutate(pob = sum(fe)) %>%
+  ungroup() 
+
+#Objeto encuesta
+  
+diseno_aut <- survey::svydesign(  
+  ids = ~id, 
+   strata = ~estrato, 
+   weights = ~fe,
+   fpc = ~pob, 
+   data = encla) 
+
+```
+
+## Densidad sindical por Rama
+
+```{r}
+
+union_density_bysector <- encla %>%
+  group_by(economic_industry) %>%
+  summarise(union_density_sector = (sum(k3_3, na.rm = TRUE) / sum(b1_3_7, na.rm = TRUE))*100)
+
+```
+
+## Recodificar base ohl
+```{r}
+
+# Recodificar ramas
+
+ohl <- ohl %>%
+  filter(yr >= 2000) %>% 
+  mutate(
+
+    ramas13 = case_when(
+      ciuur2 %in% 1:6 ~ 1,   # Agriculture, livestock, forestry and fishing
+      ciuur2 == 7 ~ 2,       # Mining
+      ciuur2 == 8 ~ 3,       # Manufacturing industry
+      ciuur2 == 9 ~ 4,       # Electricity, gas and water supply; Waste management
+      ciuur2 == 10 ~ 5,      # Construction
+      ciuur2 %in% 11:12 ~ 6, # Trade
+      ciuur2 %in% 13:14 ~ 7, # Transportation, storage, information and communications
+      ciuur2 == 15 ~ 8,      # Accommodation and food service activities
+      ciuur2 %in% 16:17 ~ 9, # Financial and insurance activities; Real estate activities
+      ciuur2 %in% 18:19 ~ 10,# Professional and technical activities; Administrative and support services
+      ciuur2 == 20 ~ 11,     # Education
+      ciuur2 == 21 ~ 12,     # Health and social work activities
+      ciuur2 %in% 22:23 ~ 13,# Artistic and recreational activities; Other services
+      TRUE ~ NA_real_
+    ),
+
+    ramas13_alt = case_when(
+      is.na(ciuur2) & ciuur4 %in% 1:6 ~ 1,
+      is.na(ciuur2) & ciuur4 == 7 ~ 2,
+      is.na(ciuur2) & ciuur4 == 8 ~ 3,
+      is.na(ciuur2) & ciuur4 == 9 ~ 4,
+      is.na(ciuur2) & ciuur4 == 10 ~ 5,
+      is.na(ciuur2) & ciuur4 %in% 11:12 ~ 6,
+      is.na(ciuur2) & ciuur4 %in% 13:14 ~ 7,
+      is.na(ciuur2) & ciuur4 == 15 ~ 8,
+      is.na(ciuur2) & ciuur4 %in% 16:17 ~ 9,
+      is.na(ciuur2) & ciuur4 %in% 18:19 ~ 10,
+      is.na(ciuur2) & ciuur4 == 20 ~ 11,
+      is.na(ciuur2) & ciuur4 == 21 ~ 12,
+      is.na(ciuur2) & ciuur4 %in% 22:23 ~ 13,
+      TRUE ~ NA_real_
+    ),
+
+    ramas13_ohl = case_when(
+      ohl_ramas %in% 1:6 ~ 1,
+      ohl_ramas == 7 ~ 2,
+      ohl_ramas == 8 ~ 3,
+      ohl_ramas == 9 ~ 4,
+      ohl_ramas == 10 ~ 5,
+      ohl_ramas %in% 11:12 ~ 6,
+      ohl_ramas %in% 13:14 ~ 7,
+      ohl_ramas == 15 ~ 8,
+      ohl_ramas %in% 16:17 ~ 9,
+      ohl_ramas %in% 18:19 ~ 10,
+      ohl_ramas == 20 ~ 11,
+      ohl_ramas == 21 ~ 12,
+      ohl_ramas %in% 22:23 ~ 13,
+      TRUE ~ NA_real_
+    ),
+    
+    ramas13 = coalesce(ramas13, ramas13_alt, ramas13_ohl)
+  ) %>%
+  mutate(
+    ramas13 = factor(ramas13,
+                     levels = 1:13,
+                     labels = c("Agriculture, livestock, forestry and fishing",
+                                "Mining",
+                                "Manufacturing industry",
+                                "Electricity, gas and water supply; Waste management",
+                                "Construction",
+                                "Trade",
+                                "Transportation, storage, information and communications",
+                                "Accommodation and food service activities",
+                                "Financial and insurance activities; Real estate activities",
+                                "Professional and technical activities; Administrative and support services",
+                                "Education",
+                                "Health and social work activities",
+                                "Artistic and recreational activities; Other services")))
+
+# Arreglar ddpp
+
+ohl$ddpp <- as.numeric(
+  str_replace_all(ohl$ddpp, ",", "."))
+
+```
+
+
+## N huelgas por rama
+
+```{r}
+
+# Calcular n huelgas por rama
+
+n_strikes_bysector <- ohl %>%
+  group_by(ramas13) %>%
+  count(yr, ramas13, name = "n")
+
+```
+
+## Suma días perdidos por rama 2023
+
+```{r}
+
+total_ddpp_bysector <- ohl %>%
+  filter(yr == 2023) %>% 
+  group_by(ramas13) %>%
+  summarise(total_ddpp = sum(ddpp, na.rm = TRUE))
+
+# ohl %>% filter(yr==2023 & ramas13 == "Construction") %>% select(ddpp) %>% View()
+
+```
+
+## n huelgas y promedio día perdido desde 2013 hasta 2023 para cada rama
+
+```{r}
+
+strikes2013to2023 <- ohl %>%
+  filter(yr >= 2013 & yr <= 2023) %>%
+  group_by(ramas13, yr) %>%
+  summarise(
+    promedio_ddpp = mean(ddpp, na.rm = TRUE),
+    n = n(),
+    .groups="drop"
+  )
+```
+
+## Total de huelgas por año
+
+```{r}
+
+total_strikes <- ohl %>%
+  filter(yr >= 2000 & yr <= 2023) %>% 
+  group_by(yr) %>% 
+  count(yr, name = "n")
+
+```
+
+## Indicador trabajadores en empresas afiliadas
+
+```{r}
+
+diseno_aut <- update(
+  diseno_aut,
+  trab_total = as.numeric(b1_3_7),
+  employer_association = as.numeric(employer_association),
+  trab_afiliados = trab_total * employer_association)
+
+indicador <- svyratio(~trab_afiliados, ~trab_total, design = diseno_aut)
+
+coef(indicador)*100
+```
+## Gráfico de barras: Indicador trabajadores en empresas afiliadas
+
+```{r}
+
+# Crear objeto con datos de otros países
+
+workers_2019 <- data.frame(
+  country = c(
+    "Denmark", "Finland", "Sweden", "Belgium", "France", "Germany",
+    "Luxembourg", "Netherlands", "Slovenia", "Greece", "Italy",
+    "Portugal", "Spain", "Cyprus", "Ireland", "Malta",
+    "United Kingdom", "Bulgaria", "Croatia", "Czech Republic",
+    "Estonia", "Hungary", "Latvia", "Lithuania", "Poland",
+    "Romania", "Slovakia"),
+  workers_employed_2019 = c(
+    70.6, 83, 92.3, 60.1, 56.1, 38.3,
+    34.8, 66.8, 39.8, 14, 48.4,
+    43.9, 34.8, 28.6, 28.1, 28.3,
+    24.2, 16.2, 29.5, 26,
+    11.3, 18.7, 18.8, 10, 7.8,
+    14.9, 30.9))
+
+# Agregar chile 
+
+workers_2019 <- rbind(
+  workers_2019,
+  data.frame(
+    country = "Chile",
+    workers_employed_2019 = coef(indicador)*100))
+
+# ordenar de menor a mayor
+
+workers_2019 <- workers_2019[order(workers_2019$workers_employed_2019), ]
+
+workers_2019$country <- factor(
+  workers_2019$country,
+  levels = workers_2019$country)
+
+# Hacer gráfico
+
+grafico_workers <- ggplot(
+  workers_2019,
+  aes(x = reorder(country, workers_employed_2019),
+      y = workers_employed_2019)
+) +
+  geom_bar(stat = "identity") +
+  theme_bw() +
+  theme(
+    axis.text.x = element_text(angle = 90, vjust = 0.6, size = 10),
+    axis.text.y = element_text(vjust = 0.5, size = 9)
+  ) +
+  scale_y_continuous(
+    breaks = c(0,10,20,30,40,50,60,70,80,90,100),
+    limits = c(0,100),
+    labels = function(x) paste0(x, "%")
+  ) +
+  labs(
+    title = "",
+    x = "",
+    y = ""
+  )
+
+# Guardar grafico
+
+ggsave(grafico_workers, filename = "../output/plots/Plot1.png",
+       device = "png",dpi = "retina", units = "cm",
+       width = 28,height = 10)
+
+```
+
+## Pasar a excel
+
+```{r}
+
+write_xlsx(
+  list(
+    total_strikes, 
+    n_strikes_bysector, 
+    strikes2013to2023,
+    union_density_bysector,
+    total_ddpp_bysector),
+  path = "../output/data_encla_ohl.xlsx"
+)
+```
+
