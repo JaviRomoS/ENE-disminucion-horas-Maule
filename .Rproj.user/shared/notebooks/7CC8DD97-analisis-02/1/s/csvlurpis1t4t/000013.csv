@@ -1,6 +1,0 @@
-"0","pred1 <- pred1 %>%  filter(group %in% c(""Comercio"",""Alojamiento y servicio de comidas"",
-                                       ""Salud y asistencia social"",
-                                       ""Enseñanza""))
-"
-"2","Error: objeto 'pred1' no encontrado
-"

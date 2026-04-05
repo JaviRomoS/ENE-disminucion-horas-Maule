@@ -408,10 +408,8 @@ Este modelo indica que: 1. El maule no aumenta ni disminuye horas de trabajo dif
 
 # 5. Gráficos
 
+## 5.1. Grafico 1: Horas habituales entre 2022 y 2025. Pais y el Maule
 ```{r}
-
-# 5.1. Grafico 1: Horas habituales entre 2022 y 2025. Pais y el Maule
-
 plot1 <- ggplot(tabla1_ab, aes(x = ano_encuesta, y = promedio,
                         color = region, group = region)) +
   geom_line(linewidth = 0.62, linetype = "dotted") +  
@@ -435,9 +433,10 @@ plot1 <- ggplot(tabla1_ab, aes(x = ano_encuesta, y = promedio,
 ggsave("output/plots/plot1.png",plot = plot1, width = 8, height = 6, dpi = 300)
 
 print(plot1)
+```
 
-# 5.2. Grafico 2: Diferencia hombres y mujeres del maule en su evolucion de horas
-
+## 5.2. Grafico 2: Diferencia hombres y mujeres del maule en su evolucion de horas
+```{r}
 plot2 <- ggplot(tabla2_ab, aes(x = ano_encuesta, y = promedio,
                       color = factor(mujer), group = mujer)) +
   geom_line(linewidth = 0.7, linetype = "dotted") +
@@ -465,10 +464,10 @@ plot2 <- ggplot(tabla2_ab, aes(x = ano_encuesta, y = promedio,
     legend.direction = "horizontal")
 ggsave("output/plots/plot2.png", plot = plot2, width = 8, height = 6, dpi = 300)
 
-print(plot2)
+```
 
-# 5.3. Variación de los sectores económicos en la regresion
-
+## 5.3. Variación de los sectores económicos en la regresion
+```{r}
 # Valores predichos
 
 pred1 <- ggpredict(model3b, terms = c("ano25", "rama"))
@@ -486,40 +485,46 @@ colores <- c("Comercio" = "#1b9e77",
              "Enseñanza" = "#DB4A4A")
 
 plot3 <- ggplot(pred1, aes(x = ano25, y = predicted, color = group, group = group)) +
-  geom_line(size = 1) +
-  geom_point(size = 3) +
-  geom_errorbar(aes(ymin = conf.low, ymax = conf.high), width = 0.1) +
+  geom_line(size = 1, linetype ="dotted") +
+  geom_point(size = 4) +
+  geom_errorbar(aes(ymin = conf.low, ymax = conf.high), width = 0.5) +
   scale_color_manual(values = colores, name = NULL) +
-  labs(x = NULL,
+  labs(
+    title = "Horas habituales según sector económico",
+    subtitle = "Región del Maule",
+    x = NULL,
        y = "Horas habituales predichas") +
   theme_light(base_size = 14) +
   theme(legend.position = "bottom")
 
 ggsave("output/plots/plot3.png", plot = plot3, width = 8, height = 6, dpi = 300)
+```
 
-# 5.4. Variación de tipo de contrato en la predicción
-
+## 5.4. Variación entre hombres y mujeres
+```{r}
 pred2 <- ggpredict(model2c, terms = c("ano25", "mujer"))
 
 pred2$ano25 <- factor(pred2$x,
                      levels = c(0,1),
                      labels = c("2022, 2023 y 2024", "2025"))
 
-pred2$group <- factor(pred2$group,
-                     levels = c(0,1),
-                     labels = c("Hombre", "Mujer"))
-
-ggplot(pred2, aes(x = ano25, y = predicted, color = group)) +
+plot4 <- ggplot(pred2, aes(x = ano25, y = predicted, color = group)) +
   geom_point(size = 3) +
   geom_line(aes(group = group)) +
   geom_errorbar(aes(ymin = conf.low, ymax = conf.high), width = 0.1) +
   labs(
+    title = "Horas habituales en hombres y mujeres",
+    subtitle = "Región del Maule",
     x = "",
     y = "Horas habituales predichas",
     color = NULL
   ) +
+  scale_color_manual(
+    values = c("0" = "#682850", "1" = "#DB4A4A"),
+    labels = c("0" = "Hombre", "1" = "Mujer")) + 
   theme_light() +
   theme(legend.position = "bottom")
+ggsave("output/plots/plot4.png", plot = plot4, width = 8, height = 6, dpi = 300)
 
 # Efectos marginales
 
@@ -531,7 +536,7 @@ cmp <- comparisons(
 
 cmp$ano25 <- factor(cmp$ano25, levels = c(0, 1), labels = c("Otros años", "2025"))
 
-ggplot(cmp, aes(x = ano25, y = estimate)) +
+plot5 <- ggplot(cmp, aes(x = ano25, y = estimate)) +
   geom_hline(yintercept = 0, linetype = 2) +
   geom_point(size = 3) +
   geom_errorbar(aes(ymin = conf.low, ymax = conf.high), width = 0.1) +
@@ -540,7 +545,67 @@ ggplot(cmp, aes(x = ano25, y = estimate)) +
     y = "Efecto marginal de ser mujer sobre horas habituales"
   ) +
   theme_minimal()
+ggsave("output/plots/plot4.png", plot = plot4, width = 8, height = 6, dpi = 300)
+```
 
+## 5.5. Variacion segun tipo de contrato
+```{r}
+pred4 <- ggpredict(model4b, terms = c("ano25", "tipo_contrato"))
 
+pred4$ano25 <- factor(pred4$x,
+                     levels = c(0,1),
+                     labels = c("2022, 2023 y 2024", "2025"))
+
+plot6 <- ggplot(pred4, aes(x = ano25, y = predicted,
+                  color = group, group = group)) +
+  geom_point(size = 3) +
+  geom_line(size = 1) +
+  geom_errorbar(aes(ymin = conf.low, ymax = conf.high),
+                width = 0.1) +
+  scale_color_manual(
+    values = c("1" = "#DB4A4A", "2" = "#682850", "3" = "#ED774F"),
+    labels = c("1" = "Honorarios", "2" = "Contrato definido", "3" = "Contrato indefinido")
+  ) +
+  labs(
+    title = "Horas habituales según tipo de contrato",
+    subtitle = "Región del Maule",
+    x = "",
+    y = "Horas habituales predichas",
+    color = NULL
+  ) +
+  theme_light() +
+  theme(legend.position = "bottom")
+
+ggsave("output/plots/plot6.png", plot = plot6, width = 8, height = 6, dpi = 300)
+```
+
+## 5.6.Variacion segun tamaño de empresa
+```{r}
+pred5 <- ggpredict(model5b, terms = c("ano25", "tamano"))
+
+pred5$ano25 <- factor(pred5$x,
+                     levels = c(0,1),
+                     labels = c("2022, 2023 y 2024", "2025"))
+
+plot7 <- ggplot(pred5, aes(x = ano25, y = predicted,
+                  color = group, group = group)) +
+  geom_point(size = 3) +
+  geom_line(size = 1) +
+  geom_errorbar(aes(ymin = conf.low, ymax = conf.high),
+                width = 0.1) +
+  scale_color_manual(
+    values = c("Grande" = "#682850", "Mediana" = "#DB4A4A", 
+               "Microempresas" = "#ED774F", "Pequeña" = "#1b9e77")) +
+  labs(
+    title = "Horas habituales según tamaño de empresa",
+    subtitle = "Región del Maule",
+    x = "",
+    y = "Horas habituales predichas",
+    color = NULL
+  ) +
+  theme_light() +
+  theme(legend.position = "bottom")
+
+ggsave("output/plots/plot7.png", plot = plot7, width = 8, height = 6, dpi = 300)
 
 ```
