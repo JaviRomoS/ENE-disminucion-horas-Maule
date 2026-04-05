@@ -464,6 +464,7 @@ plot2 <- ggplot(tabla2_ab, aes(x = ano_encuesta, y = promedio,
     legend.direction = "horizontal")
 ggsave("output/plots/plot2.png", plot = plot2, width = 8, height = 6, dpi = 300)
 
+print(plot2)
 ```
 
 ## 5.3. Variación de los sectores económicos en la regresion
@@ -498,6 +499,7 @@ plot3 <- ggplot(pred1, aes(x = ano25, y = predicted, color = group, group = grou
   theme(legend.position = "bottom")
 
 ggsave("output/plots/plot3.png", plot = plot3, width = 8, height = 6, dpi = 300)
+print(plot3)
 ```
 
 ## 5.4. Variación entre hombres y mujeres
@@ -526,6 +528,8 @@ plot4 <- ggplot(pred2, aes(x = ano25, y = predicted, color = group)) +
   theme(legend.position = "bottom")
 ggsave("output/plots/plot4.png", plot = plot4, width = 8, height = 6, dpi = 300)
 
+print(plot4)
+
 # Efectos marginales
 
 cmp <- comparisons(
@@ -546,6 +550,8 @@ plot5 <- ggplot(cmp, aes(x = ano25, y = estimate)) +
   ) +
   theme_minimal()
 ggsave("output/plots/plot4.png", plot = plot4, width = 8, height = 6, dpi = 300)
+
+print(plot5)
 ```
 
 ## 5.5. Variacion segun tipo de contrato
@@ -577,6 +583,8 @@ plot6 <- ggplot(pred4, aes(x = ano25, y = predicted,
   theme(legend.position = "bottom")
 
 ggsave("output/plots/plot6.png", plot = plot6, width = 8, height = 6, dpi = 300)
+
+print(plot6)
 ```
 
 ## 5.6.Variacion segun tamaño de empresa
@@ -607,5 +615,5 @@ plot7 <- ggplot(pred5, aes(x = ano25, y = predicted,
   theme(legend.position = "bottom")
 
 ggsave("output/plots/plot7.png", plot = plot7, width = 8, height = 6, dpi = 300)
-
+print(plot7)
 ```
