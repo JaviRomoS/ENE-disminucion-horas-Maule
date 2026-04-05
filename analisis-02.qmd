@@ -14,11 +14,12 @@ format:
     theme:
     - sandstone
     title-block-banner: true
-editor: visual
+editor: source
 lang: es
 ---
 
 # 1. Cargar librerías
+
 ```{r}
 rm(list = ls())
 options(scipen = 999)
@@ -31,6 +32,7 @@ pacman::p_load(tidyverse, rio,scales, tidyr, sjlabelled, here, sjmisc, srvyr,sur
 ```
 
 # 2. Preparar los datos
+
 ```{r}
 ene <- readRDS("output/ene_long22-25_proc.rds")
 
@@ -125,7 +127,7 @@ tabla2_ab <- bind_rows(tabla2_a, tabla2_b) %>%
 
 # 4. Modelos de regresion
 
-## 4.1. Modelo 1: Sin interacción 
+## 4.1. Modelo 1: Sin interacción
 
 ```{r}
 model1a <- lm(habituales ~ mujer + 
@@ -155,9 +157,7 @@ if (ncol(vif_tabla) == 3) {
     rename(VIF = .)}
 ```
 
-este modelo nos indica que:
- 1. Ser mujer esta relacionado con trabajar menos horas de trabajo. Se mantiene al agregar controles
- 2. Ser del maule está relacionado positivamente con trabajar mas horas
+este modelo nos indica que: 1. Ser mujer esta relacionado con trabajar menos horas de trabajo. Se mantiene al agregar controles 2. Ser del maule está relacionado positivamente con trabajar mas horas
 
 ## 4.2. Modelo 2: Interacción género y año MAULE
 
@@ -207,11 +207,10 @@ if (ncol(vif_tabla) == 3) {
 
 ```
 
-Este modelo indica:
- 1. No hay diferencias en la variación de horas entre hombres y mujeres
- 2. El efecto temporal por género aparece ligeramente al controlar por variables estructurales. Efecto overlap que no se interpretar muy bien, quizás no es tan necesario ya que la significancia es debil p<0.1
+Este modelo indica: 1. No hay diferencias en la variación de horas entre hombres y mujeres 2. El efecto temporal por género aparece ligeramente al controlar por variables estructurales. Efecto overlap que no se interpretar muy bien, quizás no es tan necesario ya que la significancia es debil p\<0.1
 
 ## 4.3. Modelo 3: Interacción año y rama
+
 ```{r}
 model3a <- lm(habituales ~ rama * ano25 + 
               mujer #+ maule_dummy
@@ -241,11 +240,10 @@ if (ncol(vif_tabla) == 3) {
 
 ```
 
-Este modelo nos indica que: 
- 1. El aumento no es homogéneo, sino que varía segun la rama
- 2. Valores significativos: Alojamiento, Comercio y Salud relacionados negativamente respecto a "Otros"
+Este modelo nos indica que: 1. El aumento no es homogéneo, sino que varía segun la rama 2. Valores significativos: Alojamiento, Comercio y Salud relacionados negativamente respecto a "Otros"
 
 ## 4.4. Modelo 4: Interacción año y tipo_contrato
+
 ```{r}
 model4a <- lm(habituales ~ tipo_contrato * ano25 + 
               mujer #+ maule_dummy
@@ -275,11 +273,10 @@ if (ncol(vif_tabla) == 3) {
 
 ```
 
-Este modelo indica que:
- 1. Honorarios disminuyeron en mayor medida que los a contrata (4.25 horas).
- 2. Plazo fijo disminuyen 0.39 horas e indefinidos 0.96 horas
+Este modelo indica que: 1. Honorarios disminuyeron en mayor medida que los a contrata (4.25 horas). 2. Plazo fijo disminuyen 0.39 horas e indefinidos 0.96 horas
 
 ## 4.5. Modelo 5: Interacción año y tamaño de empresa
+
 ```{r}
 model5a <- lm(habituales ~ tamano * ano25 + 
               mujer #+ maule_dummy
@@ -309,11 +306,10 @@ if (ncol(vif_tabla) == 3) {
 
 ```
 
-Este modelo indica que:
- 1. A mayor tamaño de empresa, menos disminuye la jornada laboral
- 2. Microempresa es la que más disminuyó horas
- 
+Este modelo indica que: 1. A mayor tamaño de empresa, menos disminuye la jornada laboral 2. Microempresa es la que más disminuyó horas
+
 ## 4.6. Modelo 6: Interacción año y antiguedad
+
 ```{r}
 model6a <- lm(habituales ~ antiguedad * ano25 + 
               mujer #+ maule_dummy
@@ -343,10 +339,10 @@ if (ncol(vif_tabla) == 3) {
 
 ```
 
-Este modelo indica que:
- 1. No significativo
- 
+Este modelo indica que: 1. No significativo
+
 ## 4.7. Modelo 7: Interacción año y estado conyugal
+
 ```{r}
 model7a <- lm(habituales ~ con_pareja * ano25 + 
               mujer #+ maule_dummy
@@ -376,10 +372,10 @@ if (ncol(vif_tabla) == 3) {
 
 ```
 
-Este modelo indica que:
- 1. Tener pareja detiene la reducción en 0.24 horas
- 
+Este modelo indica que: 1. Tener pareja detiene la reducción en 0.24 horas
+
 ## 4.8. Modelo 8: Interacción año y maule
+
 ```{r}
 model8a <- lm(habituales ~ maule_dummy * ano25 + 
               mujer, data = ene_pond)
@@ -408,9 +404,8 @@ if (ncol(vif_tabla) == 3) {
 
 ```
 
-Este modelo indica que:
- 1. El maule no aumenta ni disminuye horas de trabajo diferente al resto del país (solo mantiene la diferencia, por lo mismo la diferencia se mantiene)
- 
+Este modelo indica que: 1. El maule no aumenta ni disminuye horas de trabajo diferente al resto del país (solo mantiene la diferencia, por lo mismo la diferencia se mantiene)
+
 # 5. Gráficos
 
 ```{r}
@@ -502,7 +497,7 @@ plot3 <- ggplot(pred1, aes(x = ano25, y = predicted, color = group, group = grou
 
 ggsave("output/plots/plot3.png", plot = plot3, width = 8, height = 6, dpi = 300)
 
-# 5.4. 
+# 5.4. Variación de tipo de contrato en la predicción
 
 pred2 <- ggpredict(model2c, terms = c("ano25", "mujer"))
 
@@ -546,6 +541,6 @@ ggplot(cmp, aes(x = ano25, y = estimate)) +
   ) +
   theme_minimal()
 
-```
 
- 
+
+```

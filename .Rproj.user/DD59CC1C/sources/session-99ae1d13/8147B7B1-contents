@@ -1,0 +1,546 @@
+---
+title: "Analisis 01"
+author: Javiera Romo Sanchez
+fontsize: 12pt
+format:
+  html:
+    toc: true
+    toc-location: right
+    toc-depth: 6
+    toc-expand: 6
+    toc-title: Contenidos
+    number-sections: false
+    number-depth: 6
+    theme:
+    - sandstone
+    title-block-banner: true
+editor: source
+lang: es
+---
+
+# 1. Cargar librerías
+
+```{r}
+rm(list = ls())
+options(scipen = 999)
+options(survey.lonely.psu = "adjust")
+
+library(pacman)
+pacman::p_load(tidyverse, rio,scales, tidyr, sjlabelled, here, sjmisc, srvyr,survey,car, 
+               janitor, knitr, kableExtra, patchwork, writexl, ggeffects, marginaleffects)
+
+```
+
+# 2. Preparar los datos
+
+```{r}
+ene <- readRDS("output/ene_long22-25_proc.rds")
+
+ene <- ene %>% mutate(habituales = as.numeric(habituales))
+
+ene_pond <- as_survey_design(
+  .data = ene,
+  ids = 1,
+  strata = estrato,
+  weights = fact_anual)
+
+ene_pond <- subset(ene_pond, informal == 0)
+
+subset1 <- subset(ene_pond, region == "Maule")
+subset1 <- subset(subset1, informal == 0)
+
+```
+
+# 3. Descriptivos
+
+```{r}
+
+# 3.1. Horas trabajadas por región ---------------------------------
+
+# Promedio por año - Total País
+tabla1_a <- svyby(
+  ~habituales,
+  ~ano_encuesta,
+  design = ene_pond,
+  FUN = svymean,
+  na.rm = TRUE,
+  vartype = c("ci")
+) %>%
+  mutate(region = "Total País")
+
+# Promedio por año - Maule
+tabla1_b <- svyby(
+  ~habituales,
+  ~ano_encuesta,
+  design = subset(ene_pond, region == "Maule"),
+  FUN = svymean,
+  na.rm = TRUE,
+  vartype = c("ci")
+) %>%
+  mutate(region = "Maule")
+
+# Unir tablas
+tabla1_ab <- bind_rows(tabla1_a, tabla1_b) %>%
+  select(region, ano_encuesta, habituales, ci_l, ci_u) %>%
+  rename(
+    promedio = habituales,
+    promedio_low = ci_l,
+    promedio_upp = ci_u
+  )
+
+# 3.2. Variacion del promedio de horas habituales en hombres y mujeres ---------------------
+
+# Promedio por año - Hombres
+tabla2_a <- svyby(
+  ~habituales,
+  ~ano_encuesta,
+  design = subset(subset1, mujer == 0),
+  FUN = svymean,
+  na.rm = TRUE,
+  vartype = c("ci")
+) %>%
+  mutate(mujer = 0)
+
+# Promedio por año - Mujeres
+tabla2_b <- svyby(
+  ~habituales,
+  ~ano_encuesta,
+  design = subset(subset1, mujer == 1),
+  FUN = svymean,
+  na.rm = TRUE,
+  vartype = c("ci")
+) %>%
+  mutate(mujer = 1)
+
+# Unir tablas y renombrar columnas
+tabla2_ab <- bind_rows(tabla2_a, tabla2_b) %>%
+  select(mujer, ano_encuesta, habituales, ci_l, ci_u) %>%
+  rename(
+    promedio = habituales,
+    promedio_low = ci_l,
+    promedio_upp = ci_u
+  )
+
+
+
+```
+
+# 4. Modelos de regresion
+
+## 4.1. Modelo 1: Sin interacción
+
+```{r}
+model1a <- lm(habituales ~ mujer + 
+              ano25 + maule_dummy, data = ene_pond)
+
+model1b <- lm(habituales ~ mujer + 
+              ano25 + maule_dummy +
+              antiguedad +
+              con_pareja +
+              tipo_contrato +
+              tamano +
+              rama, data = ene_pond)
+
+summary(model1a)
+summary(model1b)
+
+vif_tabla <- as.data.frame(vif(model1b))
+
+if (ncol(vif_tabla) == 3) {
+  vif_tabla$GVIF_ajustado <- vif_tabla$GVIF^(1 / (2 * vif_tabla$Df))
+  vif_tabla <- vif_tabla %>%
+    mutate(variable = rownames(vif_tabla)) %>%
+    select(variable, GVIF, Df, GVIF_ajustado)
+} else {
+  vif_tabla <- vif_tabla %>%
+    mutate(variable = rownames(vif_tabla)) %>%
+    rename(VIF = .)}
+```
+
+este modelo nos indica que: 1. Ser mujer esta relacionado con trabajar menos horas de trabajo. Se mantiene al agregar controles 2. Ser del maule está relacionado positivamente con trabajar mas horas
+
+## 4.2. Modelo 2: Interacción género y año MAULE
+
+```{r}
+model2a <- lm(habituales ~ mujer * 
+              ano25 # + maule_dummy
+              , data = subset1)
+
+# Modelo solo con controles relacionados a características personales
+model2b <- lm(habituales ~ mujer * 
+              ano25 + #maule_dummy +
+              antiguedad +
+              con_pareja, data = subset1)
+
+# Modelo solo con controles relacionados a características del empleo
+model2c <- lm(habituales ~ mujer * 
+              ano25 + #maule_dummy +
+              tipo_contrato +
+              tamano +
+              rama, data = subset1)
+
+# Modelo con todas las variables
+model2d <- lm(habituales ~ mujer * 
+              ano25 + #maule_dummy +
+              antiguedad +
+              con_pareja +
+              tipo_contrato +
+              tamano +
+              rama, data = subset1)
+
+summary(model2a)
+summary(model2b)
+summary(model2c)
+summary(model2d)
+
+vif_tabla <- as.data.frame(vif(model2d))
+
+if (ncol(vif_tabla) == 3) {
+  vif_tabla$GVIF_ajustado <- vif_tabla$GVIF^(1 / (2 * vif_tabla$Df))
+  vif_tabla <- vif_tabla %>%
+    mutate(variable = rownames(vif_tabla)) %>%
+    select(variable, GVIF, Df, GVIF_ajustado)
+} else {
+  vif_tabla <- vif_tabla %>%
+    mutate(variable = rownames(vif_tabla)) %>%
+    rename(VIF = .)}
+
+```
+
+Este modelo indica: 1. No hay diferencias en la variación de horas entre hombres y mujeres 2. El efecto temporal por género aparece ligeramente al controlar por variables estructurales. Efecto overlap que no se interpretar muy bien, quizás no es tan necesario ya que la significancia es debil p\<0.1
+
+## 4.3. Modelo 3: Interacción año y rama
+
+```{r}
+model3a <- lm(habituales ~ rama * ano25 + 
+              mujer #+ maule_dummy
+              , data = subset1)
+
+model3b <- lm(habituales ~ rama * ano25 + 
+              mujer + #maule_dummy +
+              antiguedad +
+              con_pareja +
+              tipo_contrato +
+              tamano, data = subset1)
+
+summary(model3a)
+summary(model3b)
+
+vif_tabla <- as.data.frame(vif(model3b))
+
+if (ncol(vif_tabla) == 3) {
+  vif_tabla$GVIF_ajustado <- vif_tabla$GVIF^(1 / (2 * vif_tabla$Df))
+  vif_tabla <- vif_tabla %>%
+    mutate(variable = rownames(vif_tabla)) %>%
+    select(variable, GVIF, Df, GVIF_ajustado)
+} else {
+  vif_tabla <- vif_tabla %>%
+    mutate(variable = rownames(vif_tabla)) %>%
+    rename(VIF = .)}
+
+```
+
+Este modelo nos indica que: 1. El aumento no es homogéneo, sino que varía segun la rama 2. Valores significativos: Alojamiento, Comercio y Salud relacionados negativamente respecto a "Otros"
+
+## 4.4. Modelo 4: Interacción año y tipo_contrato
+
+```{r}
+model4a <- lm(habituales ~ tipo_contrato * ano25 + 
+              mujer #+ maule_dummy
+              , data = subset1)
+
+model4b <- lm(habituales ~ tipo_contrato * ano25 + 
+              mujer + #maule_dummy +
+              antiguedad +
+              con_pareja +
+              tamano +
+              rama, data = subset1)
+
+summary(model4a)
+summary(model4b)
+
+vif_tabla <- as.data.frame(vif(model4b))
+
+if (ncol(vif_tabla) == 3) {
+  vif_tabla$GVIF_ajustado <- vif_tabla$GVIF^(1 / (2 * vif_tabla$Df))
+  vif_tabla <- vif_tabla %>%
+    mutate(variable = rownames(vif_tabla)) %>%
+    select(variable, GVIF, Df, GVIF_ajustado)
+} else {
+  vif_tabla <- vif_tabla %>%
+    mutate(variable = rownames(vif_tabla)) %>%
+    rename(VIF = .)}
+
+```
+
+Este modelo indica que: 1. Honorarios disminuyeron en mayor medida que los a contrata (4.25 horas). 2. Plazo fijo disminuyen 0.39 horas e indefinidos 0.96 horas
+
+## 4.5. Modelo 5: Interacción año y tamaño de empresa
+
+```{r}
+model5a <- lm(habituales ~ tamano * ano25 + 
+              mujer #+ maule_dummy
+              , data = subset1)
+
+model5b <- lm(habituales ~ tamano * ano25 + 
+              mujer + #maule_dummy +
+              antiguedad +
+              con_pareja +
+              tipo_contrato +
+              rama, data = subset1)
+
+summary(model5a)
+summary(model5b)
+
+vif_tabla <- as.data.frame(vif(model5b))
+
+if (ncol(vif_tabla) == 3) {
+  vif_tabla$GVIF_ajustado <- vif_tabla$GVIF^(1 / (2 * vif_tabla$Df))
+  vif_tabla <- vif_tabla %>%
+    mutate(variable = rownames(vif_tabla)) %>%
+    select(variable, GVIF, Df, GVIF_ajustado)
+} else {
+  vif_tabla <- vif_tabla %>%
+    mutate(variable = rownames(vif_tabla)) %>%
+    rename(VIF = .)}
+
+```
+
+Este modelo indica que: 1. A mayor tamaño de empresa, menos disminuye la jornada laboral 2. Microempresa es la que más disminuyó horas
+
+## 4.6. Modelo 6: Interacción año y antiguedad
+
+```{r}
+model6a <- lm(habituales ~ antiguedad * ano25 + 
+              mujer #+ maule_dummy
+              , data = subset1)
+
+model6b <- lm(habituales ~ antiguedad * ano25 + 
+              mujer + #maule_dummy +
+              tamano +
+              con_pareja +
+              tipo_contrato +
+              rama, data = subset1)
+
+summary(model6a)
+summary(model6b)
+
+vif_tabla <- as.data.frame(vif(model6b))
+
+if (ncol(vif_tabla) == 3) {
+  vif_tabla$GVIF_ajustado <- vif_tabla$GVIF^(1 / (2 * vif_tabla$Df))
+  vif_tabla <- vif_tabla %>%
+    mutate(variable = rownames(vif_tabla)) %>%
+    select(variable, GVIF, Df, GVIF_ajustado)
+} else {
+  vif_tabla <- vif_tabla %>%
+    mutate(variable = rownames(vif_tabla)) %>%
+    rename(VIF = .)}
+
+```
+
+Este modelo indica que: 1. No significativo
+
+## 4.7. Modelo 7: Interacción año y estado conyugal
+
+```{r}
+model7a <- lm(habituales ~ con_pareja * ano25 + 
+              mujer #+ maule_dummy
+              , data = subset1)
+
+model7b <- lm(habituales ~ con_pareja * ano25 + 
+              mujer + #maule_dummy +
+              tamano +
+              antiguedad +
+              tipo_contrato +
+              rama, data = subset1)
+
+summary(model7a)
+summary(model7b)
+
+vif_tabla <- as.data.frame(vif(model7b))
+
+if (ncol(vif_tabla) == 3) {
+  vif_tabla$GVIF_ajustado <- vif_tabla$GVIF^(1 / (2 * vif_tabla$Df))
+  vif_tabla <- vif_tabla %>%
+    mutate(variable = rownames(vif_tabla)) %>%
+    select(variable, GVIF, Df, GVIF_ajustado)
+} else {
+  vif_tabla <- vif_tabla %>%
+    mutate(variable = rownames(vif_tabla)) %>%
+    rename(VIF = .)}
+
+```
+
+Este modelo indica que: 1. Tener pareja detiene la reducción en 0.24 horas
+
+## 4.8. Modelo 8: Interacción año y maule
+
+```{r}
+model8a <- lm(habituales ~ maule_dummy * ano25 + 
+              mujer, data = ene_pond)
+
+model8b <- lm(habituales ~ maule_dummy * ano25 + 
+              mujer + con_pareja +
+              tamano +
+              antiguedad +
+              tipo_contrato +
+              rama, data = ene_pond)
+
+summary(model8a)
+summary(model8b)
+
+vif_tabla <- as.data.frame(vif(model8b))
+
+if (ncol(vif_tabla) == 3) {
+  vif_tabla$GVIF_ajustado <- vif_tabla$GVIF^(1 / (2 * vif_tabla$Df))
+  vif_tabla <- vif_tabla %>%
+    mutate(variable = rownames(vif_tabla)) %>%
+    select(variable, GVIF, Df, GVIF_ajustado)
+} else {
+  vif_tabla <- vif_tabla %>%
+    mutate(variable = rownames(vif_tabla)) %>%
+    rename(VIF = .)}
+
+```
+
+Este modelo indica que: 1. El maule no aumenta ni disminuye horas de trabajo diferente al resto del país (solo mantiene la diferencia, por lo mismo la diferencia se mantiene)
+
+# 5. Gráficos
+
+```{r}
+
+# 5.1. Grafico 1: Horas habituales entre 2022 y 2025. Pais y el Maule
+
+plot1 <- ggplot(tabla1_ab, aes(x = ano_encuesta, y = promedio,
+                        color = region, group = region)) +
+  geom_line(linewidth = 0.62, linetype = "dotted") +  
+  geom_point(size = 2) +
+  geom_errorbar(aes(ymin = promedio_low, ymax = promedio_upp), width = 0.2, size = 0.65) +
+  geom_text(aes(label = round(promedio, 1)),
+            hjust = 1.3,
+            vjust = 1,
+            size = 3.5,
+            show.legend = FALSE) +
+  scale_color_manual(values = c("Total País" = "#682850", "Maule" = "#DB4A4A")) +
+  labs(
+    title = "Promedio de horas habituales trabajadas (2022–2025)",
+    x = NULL,
+    y = "Horas habituales trabajadas",
+    color = NULL
+  ) +
+  theme_light() +  
+  theme(legend.position = "bottom",
+        legend.direction = "horizontal")
+ggsave("output/plots/plot1.png",plot = plot1, width = 8, height = 6, dpi = 300)
+
+print(plot1)
+
+# 5.2. Grafico 2: Diferencia hombres y mujeres del maule en su evolucion de horas
+
+plot2 <- ggplot(tabla2_ab, aes(x = ano_encuesta, y = promedio,
+                      color = factor(mujer), group = mujer)) +
+  geom_line(linewidth = 0.7, linetype = "dotted") +
+  geom_point(size = 2) +
+  geom_errorbar(aes(ymin = promedio_low, ymax = promedio_upp), width = 0.2) +
+  geom_text(aes(label = round(promedio, 1)),
+            hjust = 1.2,
+            vjust = 1.2,
+            size = 3.5,
+            show.legend = FALSE) +
+  scale_color_manual(
+    values = c("0" = "#682850", "1" = "#DB4A4A"),
+    labels = c("0" = "Hombres", "1" = "Mujeres")
+  ) +
+  labs(
+    title = "Promedio de horas habituales trabajadas (2022–2025)",
+    subtitle = "Región del Maule",
+    x = NULL,
+    y = "Horas habituales trabajadas",
+    color = NULL
+  ) +
+  theme_light(base_size = 14) +
+  theme(
+    legend.position = "bottom",
+    legend.direction = "horizontal")
+ggsave("output/plots/plot2.png", plot = plot2, width = 8, height = 6, dpi = 300)
+
+print(plot2)
+
+# 5.3. Variación de los sectores económicos en la regresion
+
+# Valores predichos
+
+pred1 <- ggpredict(model3b, terms = c("ano25", "rama"))
+
+pred1$ano25 <- factor(pred1$x,
+                     levels = c(0,1),
+                     labels = c("2022, 2023 y 2024", "2025"))
+
+pred1 <- pred1 %>%  filter(group %in% c("Comercio","Alojamiento y servicio de comidas",
+                                       "Salud y asistencia social",
+                                       "Enseñanza"))
+colores <- c("Comercio" = "#1b9e77",
+             "Alojamiento y servicio de comidas" = "#ED774F",
+             "Salud y asistencia social" = "#682850",
+             "Enseñanza" = "#DB4A4A")
+
+plot3 <- ggplot(pred1, aes(x = ano25, y = predicted, color = group, group = group)) +
+  geom_line(size = 1) +
+  geom_point(size = 3) +
+  geom_errorbar(aes(ymin = conf.low, ymax = conf.high), width = 0.1) +
+  scale_color_manual(values = colores, name = NULL) +
+  labs(x = NULL,
+       y = "Horas habituales predichas") +
+  theme_light(base_size = 14) +
+  theme(legend.position = "bottom")
+
+ggsave("output/plots/plot3.png", plot = plot3, width = 8, height = 6, dpi = 300)
+
+# 5.4. Variación de tipo de contrato en la predicción
+
+pred2 <- ggpredict(model2c, terms = c("ano25", "mujer"))
+
+pred2$ano25 <- factor(pred2$x,
+                     levels = c(0,1),
+                     labels = c("2022, 2023 y 2024", "2025"))
+
+pred2$group <- factor(pred2$group,
+                     levels = c(0,1),
+                     labels = c("Hombre", "Mujer"))
+
+ggplot(pred2, aes(x = ano25, y = predicted, color = group)) +
+  geom_point(size = 3) +
+  geom_line(aes(group = group)) +
+  geom_errorbar(aes(ymin = conf.low, ymax = conf.high), width = 0.1) +
+  labs(
+    x = "",
+    y = "Horas habituales predichas",
+    color = NULL
+  ) +
+  theme_light() +
+  theme(legend.position = "bottom")
+
+# Efectos marginales
+
+cmp <- comparisons(
+  model2c,
+  variables = "mujer",
+  newdata = datagrid(ano25 = c(0, 1))
+)
+
+cmp$ano25 <- factor(cmp$ano25, levels = c(0, 1), labels = c("Otros años", "2025"))
+
+ggplot(cmp, aes(x = ano25, y = estimate)) +
+  geom_hline(yintercept = 0, linetype = 2) +
+  geom_point(size = 3) +
+  geom_errorbar(aes(ymin = conf.low, ymax = conf.high), width = 0.1) +
+  labs(
+    x = "",
+    y = "Efecto marginal de ser mujer sobre horas habituales"
+  ) +
+  theme_minimal()
+
+
+
+```

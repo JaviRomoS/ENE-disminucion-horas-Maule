@@ -1,2 +1,15 @@
-# Auto detect text files and perform LF normalization
-* text=auto
+# Archivos de RStudio
+#.Rhistory
+#.Rproj.user/
+
+# Archivos de salida de Quarto
+#*.html
+#*_files/
+
+# Carpeta de resultados/plots
+#output/
+
+# Archivos temporales
+#*.csv
+#*.log
+#*.tmp

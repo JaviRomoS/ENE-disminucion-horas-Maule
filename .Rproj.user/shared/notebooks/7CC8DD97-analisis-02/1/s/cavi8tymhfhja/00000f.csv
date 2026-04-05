@@ -1,0 +1,8 @@
+"0","rm(list = ls())"
+"0","options(scipen = 999)"
+"0","options(survey.lonely.psu = ""adjust"")"
+"0",""
+"0","library(pacman)"
+"0","pacman::p_load(tidyverse, rio,scales, tidyr, sjlabelled, here, sjmisc, srvyr,survey,car, "
+"0","               janitor, knitr, kableExtra, patchwork, writexl, ggeffects, marginaleffects)"
+"0",""
