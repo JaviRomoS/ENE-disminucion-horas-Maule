@@ -760,6 +760,9 @@ plot7b <- ggplot(pred6b, aes(
   theme_light() +
   theme(legend.position = "bottom")
 
+print(plot7a)
+print(plot7b)
+
 ```
 
 
@@ -799,6 +802,7 @@ plot9 <- ggplot(tabla3, aes(
   theme_light() +
   theme(legend.position = "bottom")
 
+print(plot9)
 
 ```
 
