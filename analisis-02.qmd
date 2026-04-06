@@ -61,10 +61,8 @@ subset1 <- subset(subset1, informal == 0)
 
 # 3. Descriptivos
 
+## 3.1. Horas trabajadas por región ---------------------------------
 ```{r}
-
-# 3.1. Horas trabajadas por región ---------------------------------
-
 # Promedio por año - Total País
 tabla1_a <- svyby(
   ~habituales,
@@ -95,9 +93,11 @@ tabla1_ab <- bind_rows(tabla1_a, tabla1_b) %>%
     promedio_low = ci_l,
     promedio_upp = ci_u
   )
+```
 
-# 3.2. Variacion del promedio de horas habituales en hombres y mujeres ---------------------
 
+## 3.2. Variacion del promedio de horas habituales en hombres y mujeres 
+```{r}
 # Promedio por año - Hombres
 tabla2_a <- svyby(
   ~habituales,
@@ -129,6 +129,35 @@ tabla2_ab <- bind_rows(tabla2_a, tabla2_b) %>%
     promedio_upp = ci_u
   )
 
+```
+
+## 3.3. Numero de trabajadores segun tipo de contrato en el tiempo
+
+```{r}
+
+subset1 <- update(subset1, uno = 1)
+
+tabla3 <- svyby(
+  ~uno,
+  ~ano_encuesta + tipo_contrato,
+  design = subset1,
+  FUN = svytotal,
+  na.rm = TRUE,
+  vartype = c("ci")
+) %>%
+  rename(
+    total = uno,
+    total_low = ci_l,
+    total_upp = ci_u
+  ) %>%
+  group_by(ano_encuesta) %>%
+  mutate(
+    year_total = sum(total),
+    propor = total / year_total,
+    propor_low = total_low / year_total,
+    propor_upp = total_upp / year_total
+  ) %>%
+  ungroup()
 
 
 ```
@@ -415,6 +444,9 @@ if (ncol(vif_tabla) == 3) {
 
 Este modelo indica que: 1. El maule no aumenta ni disminuye horas de trabajo diferente al resto del país (solo mantiene la diferencia, por lo mismo la diferencia se mantiene)
 
+
+
+
 # 5. Gráficos
 
 ## 5.1. Grafico 1: Horas habituales entre 2022 y 2025. Pais y el Maule
@@ -442,6 +474,7 @@ plot1 <- ggplot(tabla1_ab, aes(x = ano_encuesta, y = promedio,
 ggsave("output/plots/plot1.png",plot = plot1, width = 8, height = 6, dpi = 300)
 
 print(plot1)
+
 ```
 
 ## 5.2. Grafico 2: Diferencia hombres y mujeres del maule en su evolucion de horas
@@ -643,7 +676,7 @@ print(plot6b)
 print(plot6c)
 ```
 
-## 5.6.Variacion segun tamaño de empresa
+## Variacion segun tamaño de empresa → Fuera porque ya no es significativa
 ```{r}
 #pred5 <- ggpredict(model5b, terms = c("year_c", "tamano"))
 
@@ -673,3 +706,99 @@ print(plot6c)
 # ggsave("output/plots/plot7.png", plot = plot7, width = 8, height = 6, dpi = 300)
 # print(plot7)
 ```
+
+## 5.6. Variacion según antiguedad
+
+```{r}
+pred6 <- ggpredict(model6b, terms = c("antiguedad", "year_c"))
+
+pred6 <- as.data.frame(pred6)
+
+pred6$year_c <- factor(pred6$group,
+                     levels = c(0,1,2,3),
+                     labels = c("2022", "2023", "2024", "2025"))
+
+pred6a <- pred6 %>% filter(year_c %in% c(2022, 2024))
+pred6b <- pred6 %>% filter(year_c %in% c(2022, 2025))
+
+
+plot7a <- ggplot(pred6a, aes(
+    x = x,  
+    y = predicted,
+    color = year_c,      
+    group = year_c
+  )) +
+  geom_line(size = 1) +
+  geom_ribbon(aes(ymin = conf.low, ymax = conf.high, fill = year_c),
+              alpha = 0.15, color = NA) +
+  labs(
+    title = "Interacción antigüedad × año",
+    x = "Antigüedad",
+    y = "Valor predicho",
+    color = "Año",
+    fill = "Año"
+  ) +
+  theme_light() +
+  theme(legend.position = "bottom")
+
+plot7b <- ggplot(pred6b, aes(
+    x = x,  
+    y = predicted,
+    color = year_c,      
+    group = year_c
+  )) +
+  geom_line(size = 1) +
+  geom_ribbon(aes(ymin = conf.low, ymax = conf.high, fill = year_c),
+              alpha = 0.15, color = NA) +
+  labs(
+    title = "Interacción antigüedad × año",
+    x = "Antigüedad",
+    y = "Valor predicho",
+    color = "Año",
+    fill = "Año"
+  ) +
+  theme_light() +
+  theme(legend.position = "bottom")
+
+```
+
+
+## 5.7. Grafico 8: Diferencia horas segun tipo contrato
+
+```{r}
+plot9 <- ggplot(tabla3, aes(
+    x = ano_encuesta,
+    y = propor,
+    color = tipo_contrato,
+    group = tipo_contrato
+  )) +
+  geom_point(size = 3) +
+  geom_line(size = 1) +
+  geom_errorbar(aes(ymin = propor_low, ymax = propor_upp),
+                width = 0.1) +
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
+  scale_color_manual(
+    values = c(
+      "1" = "#DB4A4A",
+      "2" = "#682850",
+      "3" = "#ED774F"
+    ),
+    labels = c(
+      "1" = "Honorarios",
+      "2" = "Contrato definido",
+      "3" = "Contrato indefinido"
+    )
+  ) +
+  labs(
+    title = "Proporción de trabajadores según tipo de contrato (2022 - 2025)",
+    subtitle = "Región del Maule",
+    x = "",
+    y = "Proporción sobre el total",
+    color = NULL
+  ) +
+  theme_light() +
+  theme(legend.position = "bottom")
+
+
+```
+

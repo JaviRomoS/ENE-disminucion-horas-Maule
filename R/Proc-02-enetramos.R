@@ -127,7 +127,7 @@ ene <- ene %>% mutate(across(everything(), ~ as.numeric(as.character(.)))) %>%
          b17_ano = case_when(b17_ano == 8888 ~ NA,
                              b17_ano == 9999 ~ NA,
                              TRUE ~ b17_ano),
-         antiguedad = (as.numeric(ano_encuesta) - as.numeric(b17_ano)),
+         antiguedad = (as.numeric(ano_encuesta) - as.numeric(b17_ano)+1),
                       
          tipo_contrato = case_when(ocup_honorarios == 1 ~ 1,
                                    b9 == 1 ~ 2,
