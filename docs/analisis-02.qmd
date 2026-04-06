@@ -16,9 +16,6 @@ format:
     title-block-banner: true
 editor: source
 lang: es
-project:
-  type: website
-  output-dir: docs
 ---
 
 # 1. Cargar librerías
