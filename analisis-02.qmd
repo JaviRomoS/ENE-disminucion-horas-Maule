@@ -162,11 +162,43 @@ tabla3 <- svyby(
 
 ```
 
+## 3.4. Trabajadores a honorarios según género
+
+```{r}
+
+tabla4 <- svyby(
+  ~uno,
+  ~ano_encuesta + mujer,
+  design = subset(subset1, tipo_contrato == "1"), 
+  FUN = svytotal,
+  na.rm = TRUE,
+  vartype = c("ci")
+) %>%
+  rename(
+    total = uno,
+    total_low = ci_l,
+    total_upp = ci_u
+  ) %>%
+  group_by(ano_encuesta) %>%
+  mutate(
+    year_total = sum(total),
+    propor = total / year_total,
+    propor_low = total_low / year_total,
+    propor_upp = total_upp / year_total
+  ) %>%
+  ungroup()
+
+```
+
+
 # 4. Modelos de regresion
 
 ## 4.1. Modelo 1: Sin interacción
 
 ```{r}
+
+ene <- ene %>% mutate(hab_tramos = as.numeric(hab_tramos))
+
 model1a <- lm(habituales ~ mujer + 
               year_c + 
                 maule_dummy, data = ene_pond)
@@ -178,6 +210,14 @@ model1b <- lm(habituales ~ mujer +
               tipo_contrato +
               tamano +
               rama, data = ene_pond)
+
+model1c <- lm(hab_tramos ~ mujer + 
+              year_c + region +
+              antiguedad +
+              con_pareja +
+              tipo_contrato +
+              tamano +
+              rama, data = ene)
 
 summary(model1a)
 summary(model1b)
@@ -471,6 +511,7 @@ plot1 <- ggplot(tabla1_ab, aes(x = ano_encuesta, y = promedio,
   theme_light() +  
   theme(legend.position = "bottom",
         legend.direction = "horizontal")
+
 ggsave("output/plots/plot1.png",plot = plot1, width = 8, height = 6, dpi = 300)
 
 print(plot1)
@@ -714,6 +755,8 @@ pred6 <- ggpredict(model6b, terms = c("antiguedad", "year_c"))
 
 pred6 <- as.data.frame(pred6)
 
+pred6 <- pred6 %>% filter(x<=40)
+
 pred6$year_c <- factor(pred6$group,
                      levels = c(0,1,2,3),
                      labels = c("2022", "2023", "2024", "2025"))
@@ -732,16 +775,21 @@ plot7a <- ggplot(pred6a, aes(
   geom_ribbon(aes(ymin = conf.low, ymax = conf.high, fill = year_c),
               alpha = 0.15, color = NA) +
   labs(
-    title = "Interacción antigüedad × año",
-    x = "Antigüedad",
-    y = "Valor predicho",
-    color = "Año",
-    fill = "Año"
+    title = "Horas habituales predichas según antiguedad y año (2022-2024)",
+    x = NULL,
+    y = "Horas habituales predichas",
+    color = NULL,
+    fill = NULL
+  ) +   scale_color_manual(
+    values = c("2022" = "#ED774F", "2024" = "#682850")) +
+  scale_fill_manual(
+    values = c("2022" = "#ED774F", "2024" = "#682850")
   ) +
   theme_light() +
   theme(legend.position = "bottom")
+ggsave("output/plots/plot6a.png", plot = plot6a, width = 8, height = 6, dpi = 300)
 
-plot7b <- ggplot(pred6b, aes(
+plot7b <- ggplot(pred6b,aes(
     x = x,  
     y = predicted,
     color = year_c,      
@@ -751,14 +799,19 @@ plot7b <- ggplot(pred6b, aes(
   geom_ribbon(aes(ymin = conf.low, ymax = conf.high, fill = year_c),
               alpha = 0.15, color = NA) +
   labs(
-    title = "Interacción antigüedad × año",
-    x = "Antigüedad",
-    y = "Valor predicho",
-    color = "Año",
-    fill = "Año"
+    title = "Horas habituales predichas según antiguedad y año (2022-2025)",
+    x = NULL,
+    y = "Horas habituales predichas",
+    color = NULL,
+    fill = NULL
+  ) +   scale_color_manual(
+    values = c("2022" = "#ED774F", "2025" = "#682850")) +
+  scale_fill_manual(
+    values = c("2022" = "#ED774F", "2025" = "#682850")
   ) +
   theme_light() +
   theme(legend.position = "bottom")
+ggsave("output/plots/plot6b.png", plot = plot6b, width = 8, height = 6, dpi = 300)
 
 print(plot7a)
 print(plot7b)
@@ -772,19 +825,15 @@ print(plot7b)
 plot9 <- ggplot(tabla3, aes(
     x = ano_encuesta,
     y = propor,
-    color = tipo_contrato,
-    group = tipo_contrato
+    fill = tipo_contrato
   )) +
-  geom_point(size = 3) +
-  geom_line(size = 1) +
-  geom_errorbar(aes(ymin = propor_low, ymax = propor_upp),
-                width = 0.1) +
+  geom_bar(stat = "identity", position = "stack") +
   scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
-  scale_color_manual(
+  scale_fill_manual(
     values = c(
-      "1" = "#DB4A4A",
-      "2" = "#682850",
-      "3" = "#ED774F"
+      "1" = "#DB4A4A",   # Honorarios
+      "2" = "#682850",   # Contrato definido
+      "3" = "#ED774F"    # Contrato indefinido
     ),
     labels = c(
       "1" = "Honorarios",
@@ -797,12 +846,72 @@ plot9 <- ggplot(tabla3, aes(
     subtitle = "Región del Maule",
     x = "",
     y = "Proporción sobre el total",
+    fill = NULL
+  ) +
+  theme_light() +
+  theme(legend.position = "bottom")
+ggsave("output/plots/plot9.png", plot = plot9, width = 8, height = 6, dpi = 300)
+
+print(plot9)
+
+```
+
+## 5.8. Graficar composicion de género de honorarios
+
+```{r}
+
+tabla4 <- tabla4 %>%
+  mutate(mujer = factor(mujer, levels = c(0,1), labels = c("Hombre","Mujer")))
+
+plot10a <- ggplot(tabla4, aes(
+    x = ano_encuesta,
+    y = total,
+    color = mujer,
+    group = mujer
+  )) +
+  geom_point(size = 3) +
+  geom_line(size = 1) +
+  geom_errorbar(aes(ymin = total_low, ymax = total_upp),
+                width = 0.1) +
+  scale_y_continuous(labels = scales::comma) +
+  scale_color_manual(
+    values = c("Hombre" = "#682850", "Mujer" = "#DB4A4A")
+  ) +
+  labs(
+    title = "Total de trabajadores a honorarios según sexo (2022 - 2025)",
+    subtitle = "Región del Maule",
+    x = "",
+    y = "Número de trabajadores",
     color = NULL
   ) +
   theme_light() +
   theme(legend.position = "bottom")
+ggsave("output/plots/plot10a.png", plot = plot10a, width = 8, height = 6, dpi = 300)
 
-print(plot9)
+plot10b <- ggplot(tabla4, aes(
+    x = ano_encuesta,
+    y = propor,
+    color = mujer,
+    group = mujer
+  )) +
+  geom_point(size = 3) +
+  geom_line(size = 1) +
+  geom_errorbar(aes(ymin = propor_low, ymax = propor_upp),
+                width = 0.1) +
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
+  scale_color_manual(
+    values = c("Hombre" = "#682850", "Mujer" = "#DB4A4A")
+  ) +
+  labs(
+    title = "Proporción de trabajadores a honorarios según sexo (2022 - 2025)",
+    subtitle = "Región del Maule",
+    x = "",
+    y = "Proporción sobre el total",
+    color = NULL
+  ) +
+  theme_light() +
+  theme(legend.position = "bottom")
+ggsave("output/plots/plot10b.png", plot = plot10b, width = 8, height = 6, dpi = 300)
 
 ```
 
