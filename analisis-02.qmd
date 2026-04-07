@@ -755,7 +755,7 @@ pred6 <- ggpredict(model6b, terms = c("antiguedad", "year_c"))
 
 pred6 <- as.data.frame(pred6)
 
-pred6 <- pred6 %>% filter(x<=40)
+pred6 <- pred6 %>% filter(x<=30)
 
 pred6$year_c <- factor(pred6$group,
                      levels = c(0,1,2,3),
@@ -787,7 +787,8 @@ plot7a <- ggplot(pred6a, aes(
   ) +
   theme_light() +
   theme(legend.position = "bottom")
-ggsave("output/plots/plot6a.png", plot = plot6a, width = 8, height = 6, dpi = 300)
+
+ggsave("output/plots/plot7a.png", plot = plot7a, width = 8, height = 6, dpi = 300)
 
 plot7b <- ggplot(pred6b,aes(
     x = x,  
@@ -811,9 +812,11 @@ plot7b <- ggplot(pred6b,aes(
   ) +
   theme_light() +
   theme(legend.position = "bottom")
-ggsave("output/plots/plot6b.png", plot = plot6b, width = 8, height = 6, dpi = 300)
+
+ggsave("output/plots/plot7b.png", plot = plot7b, width = 8, height = 6, dpi = 300)
 
 print(plot7a)
+
 print(plot7b)
 
 ```
